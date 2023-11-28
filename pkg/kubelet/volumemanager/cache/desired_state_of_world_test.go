@@ -1288,6 +1288,14 @@ func TestGetVolumeNamesForPod(t *testing.T) {
 					},
 				},
 				{
+					Name: "volume1-dup",
+					VolumeSource: v1.VolumeSource{
+						GCEPersistentDisk: &v1.GCEPersistentDiskVolumeSource{
+							PDName: "fake-device1",
+						},
+					},
+				},
+				{
 					Name: "volume3-name",
 					VolumeSource: v1.VolumeSource{
 						GCEPersistentDisk: &v1.GCEPersistentDiskVolumeSource{
@@ -1331,6 +1339,7 @@ func TestGetVolumeNamesForPod(t *testing.T) {
 
 	addVolume(pod1, 0)
 	addVolume(pod1, 1)
+	addVolume(pod1, 2)
 	addVolume(pod2, 0)
 
 	verifyVolumeNames := func(pod *v1.Pod, expectedVolumeNames map[string]v1.UniqueVolumeName) {
@@ -1345,6 +1354,7 @@ func TestGetVolumeNamesForPod(t *testing.T) {
 	}
 	verifyVolumeNames(pod1, map[string]v1.UniqueVolumeName{
 		"volume1-name": "fake-plugin/fake-device1",
+		"volume1-dup":  "fake-plugin/fake-device1",
 		"volume3-name": "fake-plugin/fake-device3",
 	})
 	verifyVolumeNames(pod2, map[string]v1.UniqueVolumeName{
