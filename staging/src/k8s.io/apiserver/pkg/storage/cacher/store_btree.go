@@ -17,7 +17,6 @@ limitations under the License.
 package cacher
 
 import (
-	"container/heap"
 	"fmt"
 	"math"
 	"strings"
@@ -51,7 +50,7 @@ func (si *threadedStoreIndexer) Count(prefix, continueKey string) (count int) {
 	return si.store.Count(prefix, continueKey)
 }
 
-func (si *threadedStoreIndexer) Clone() orderedLister {
+func (si *threadedStoreIndexer) Clone() immutableOrderedStore {
 	si.lock.RLock()
 	defer si.lock.RUnlock()
 	return si.store.Clone()
@@ -294,7 +293,7 @@ func (s *btreeStore) Count(prefix, continueKey string) (count int) {
 	return count
 }
 
-func (s *btreeStore) Clone() orderedLister {
+func (s *btreeStore) Clone() mutableOrderedStore {
 	return &btreeStore{
 		tree: s.tree.Clone(),
 	}
@@ -414,66 +413,68 @@ func (i *indexer) delete(key, value string, index map[string]map[string]*storeEl
 // storeSnapshotter caches snapshots of store created by cloning the store.
 type storeSnapshotter struct {
 	sync.RWMutex
-	snapshots map[uint64]orderedLister
-	// Using minHeap for fast Clean implementation.
-	revisions minIntHeap
+	snapshots      map[uint64]immutableOrderedStore
+	revisions      *btree.BTree
+	snapshotPeriod uint64
 }
 
-func newStoreSnapshotter() *storeSnapshotter {
+func newStoreSnapshotter(snapshotPeriod uint64) *storeSnapshotter {
 	return &storeSnapshotter{
-		snapshots: make(map[uint64]orderedLister),
+		revisions:      btree.New(32),
+		snapshots:      make(map[uint64]immutableOrderedStore),
+		snapshotPeriod: snapshotPeriod,
 	}
 }
 
-func (c *storeSnapshotter) Get(rv uint64) (orderedLister, bool) {
+func (c *storeSnapshotter) FindEqualOrLower(rv uint64) (immutableOrderedStore, uint64) {
 	c.RLock()
 	defer c.RUnlock()
-	indexer, ok := c.snapshots[rv]
-	return indexer, ok
+
+	var equalOrLower uint64
+	c.revisions.DescendLessOrEqual(rev(rv), func(i btree.Item) bool {
+		equalOrLower = uint64(i.(rev))
+		return false
+	})
+	if equalOrLower == 0 {
+		return nil, 0
+	}
+	return c.snapshots[equalOrLower], equalOrLower
 }
 
-func (c *storeSnapshotter) Set(rv uint64, store orderedLister) {
+func (c *storeSnapshotter) Includes(rv uint64) bool {
+	c.RLock()
+	defer c.RUnlock()
+
+	minRV := c.revisions.Min()
+	if minRV == nil {
+		return false
+	}
+
+	return uint64(minRV.(rev)) <= rv
+}
+
+func (c *storeSnapshotter) Set(rv uint64, indexer immutableOrderedStore) {
 	c.Lock()
 	defer c.Unlock()
-	if _, ok := c.snapshots[rv]; !ok {
-		heap.Push(&c.revisions, rv)
-	}
-	c.snapshots[rv] = store.Clone()
+	c.revisions.ReplaceOrInsert(rev(rv))
+	c.snapshots[rv] = indexer.Clone()
 }
 
 func (c *storeSnapshotter) Clean(rv uint64) {
 	c.Lock()
 	defer c.Unlock()
-	for len(c.revisions) > 0 && rv >= c.revisions[0] {
-		delete(c.snapshots, c.revisions[0])
-		heap.Pop(&c.revisions)
+	for c.revisions.Len() > 0 {
+		minRV := uint64(c.revisions.Min().(rev))
+		if rv < minRV {
+			break
+		}
+		delete(c.snapshots, minRV)
+		c.revisions.DeleteMin()
 	}
 }
 
-type minIntHeap []uint64
+type rev uint64
 
-func (h minIntHeap) Len() int {
-	return len(h)
-}
-
-func (h minIntHeap) Less(i, j int) bool {
-	return h[i] < h[j]
-}
-
-func (h minIntHeap) Swap(i, j int) {
-	h[i], h[j] = h[j], h[i]
-}
-
-func (h *minIntHeap) Push(val interface{}) {
-	*h = append(*h, val.(uint64))
-}
-
-func (h *minIntHeap) Pop() interface{} {
-	old := *h
-
-	size := len(old)
-	val := old[size-1]
-	*h = old[:size-1]
-
-	return val
+func (r1 rev) Less(r2 btree.Item) bool {
+	return r1 < r2.(rev)
 }
