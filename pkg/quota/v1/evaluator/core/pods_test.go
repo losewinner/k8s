@@ -35,7 +35,6 @@ import (
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/features"
-	"k8s.io/kubernetes/pkg/util/node"
 	"k8s.io/utils/clock"
 	testingclock "k8s.io/utils/clock/testing"
 )
@@ -445,7 +444,7 @@ func TestPodEvaluatorUsage(t *testing.T) {
 					DeletionGracePeriodSeconds: &terminationGracePeriodSeconds,
 				},
 				Status: api.PodStatus{
-					Reason: node.NodeUnreachablePodReason,
+					Reason: "Evicted",
 				},
 				Spec: api.PodSpec{
 					TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
@@ -476,7 +475,7 @@ func TestPodEvaluatorUsage(t *testing.T) {
 					DeletionGracePeriodSeconds: &terminationGracePeriodSeconds,
 				},
 				Status: api.PodStatus{
-					Reason: node.NodeUnreachablePodReason,
+					Reason: "Evicted",
 				},
 				Spec: api.PodSpec{
 					Containers: []api.Container{
