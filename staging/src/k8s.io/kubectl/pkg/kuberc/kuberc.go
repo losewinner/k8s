@@ -31,11 +31,9 @@ import (
 	"github.com/spf13/pflag"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
-	"k8s.io/klog/v2"
 )
 
 const RecommendedKubeRCFileName = "kuberc"
@@ -66,7 +64,7 @@ type PreferencesHandler interface {
 // Preferences stores the kuberc file coming either from environment variable
 // or file from set in flag or the default kuberc path.
 type Preferences struct {
-	getPreferencesFunc func(kuberc string) (*config.Preference, error)
+	getPreferencesFunc func(kuberc string, errOut io.Writer) (*config.Preference, error)
 
 	aliases map[string]struct{}
 }
@@ -102,7 +100,7 @@ func (p *Preferences) Apply(rootCmd *cobra.Command, args []string, errOut io.Wri
 	if err != nil {
 		return args, err
 	}
-	kuberc, err := p.getPreferencesFunc(kubercPath)
+	kuberc, err := p.getPreferencesFunc(kubercPath, errOut)
 	if err != nil {
 		return args, fmt.Errorf("kuberc error %w", err)
 	}
@@ -299,7 +297,7 @@ func (p *Preferences) applyAliases(rootCmd *cobra.Command, kuberc *config.Prefer
 // If KUBERC is also not set, it falls back to default .kuberc file at the same location
 // where kubeconfig's defaults are residing in.
 // If KUBERC is set to "off", kuberc will be turned off and original behaviors in kubectl will be applied.
-func DefaultGetPreferences(kuberc string) (*config.Preference, error) {
+func DefaultGetPreferences(kuberc string, errOut io.Writer) (*config.Preference, error) {
 	if val := os.Getenv("KUBERC"); val == "off" {
 		if kuberc != "" {
 			return nil, fmt.Errorf("disabling kuberc via KUBERC=off and passing kuberc flag are mutually exclusive")
@@ -318,66 +316,16 @@ func DefaultGetPreferences(kuberc string) (*config.Preference, error) {
 		explicitly = true
 	}
 
-	kubeRCBytes, err := os.ReadFile(kubeRCFile)
-	if err != nil {
-		if !explicitly {
-			// We don't log if the kuberc file does not exist. Because user simply does not
-			// specify neither default kuberc file nor explicitly pass it.
-			// We'll continue to default behavior without raising any error.
-			if !os.IsNotExist(err) {
-				klog.V(4).Infof("error reading kuberc file %q: %v", kubeRCFile, err)
-			}
-			return nil, nil
-		}
-		// Kuberc is specified by user via flag or env variable and it gets an error.
+	preference, err := decodePreference(kubeRCFile, explicitly)
+	if preference == nil && err != nil && explicitly {
 		return nil, err
 	}
 
-	pref, gvk, err := strictCodecs.UniversalDecoder().Decode(kubeRCBytes, nil, nil)
 	if err != nil {
-		if !runtime.IsStrictDecodingError(err) {
-			if !explicitly {
-				klog.Warningf("unable to decode kuberc file %q: %v", kubeRCFile, err)
-				return nil, nil
-			}
-			return nil, fmt.Errorf("unable to decode kuberc file %q: %w", kubeRCFile, err)
-		}
-		strictErr := err
-		// default kuberc is incompatible with this version, or it simply is invalid.
-		// falling back to lenient decoding to do our best.
-		pref, gvk, err = lenientCodecs.UniversalDecoder().Decode(kubeRCBytes, nil, nil)
-		if err != nil {
-			if !explicitly {
-				klog.Warningf("kuberc decode error %q: %v", kubeRCFile, err)
-				return nil, nil
-			}
-			return nil, fmt.Errorf("could not be decoded gvk %s, err: %w", gvk, err)
-		}
-		klog.Warningf("gvk %s could not be decoded with strict decoding, continue with less strict decoding: %s", gvk, strictErr)
+		fmt.Fprintf(errOut, "kuberc file decode error: %v", err)
 	}
 
-	expectedGK := schema.GroupKind{
-		Group: config.SchemeGroupVersion.Group,
-		Kind:  "Preference",
-	}
-	if gvk.GroupKind() != expectedGK {
-		if !explicitly {
-			klog.Warningf("unsupported kuberc GVK %s", gvk.GroupKind().String())
-			return nil, nil
-		}
-		return nil, fmt.Errorf("unsupported preference GVK %s", gvk.GroupKind().String())
-	}
-
-	preferences, ok := pref.(*config.Preference)
-	if !ok {
-		if !explicitly {
-			klog.Warningf("preferences in %s file is not a valid config.Preference type", kubeRCFile)
-			return nil, nil
-		}
-		return nil, fmt.Errorf("preferences in %s file is not a valid config.Preference type", kubeRCFile)
-	}
-
-	return preferences, nil
+	return preference, nil
 }
 
 // Normally, we should extract this value directly from kuberc flag.

@@ -153,6 +153,35 @@ EOF
   output_message=$(kubectl get pod/test-pod-2 2>&1 "${kube_flags[@]:?}" --kuberc="${TMPDIR:-/tmp}"/kuberc_file)
   kube::test::if_has_string "${output_message}" "test-pod-2"
 
+  cat > "${TMPDIR:-/tmp}"/kuberc_file_multi << EOF
+apiVersion: kubectl.config.k8s.io/notexist
+kind: Preference
+overrides:
+- command: get
+  flags:
+  - name: namespace
+    default: "test-kuberc-ns"
+  - name: output
+    default: "json"
+---
+apiVersion: kubectl.config.k8s.io/v1alpha1
+kind: Preference
+overrides:
+- command: get
+  flags:
+  - name: namespace
+    default: "test-kuberc-ns"
+  - name: output
+    default: "json"
+EOF
+
+  # assure that it is not deleted
+  output_message=$(kubectl get pod/test-pod-2 2>&1 "${kube_flags[@]:?}" --kuberc="${TMPDIR:-/tmp}"/kuberc_file_multi)
+  # assure that correct kuberc is found and printed in output_message
+  kube::test::if_has_string "${output_message}" "test-pod-2"
+  # assure that warning message is also printed for the notexist kuberc version
+  kube::test::if_has_string "${output_message}" "kuberc file decode error" "kubectl.config.k8s.io/notexist"
+
   # explicitly overwriting the value that is also defaulted in kuberc and
   # assure that explicit value supersedes
   output_message=$(kubectl delete namespace/test-kuberc-ns --interactive=false --kuberc="${TMPDIR:-/tmp}"/kuberc_file)
