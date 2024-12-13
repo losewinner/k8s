@@ -82,8 +82,6 @@ func addExecChecks(checks []Checker, execer utilsexec.Interface, k8sVersion stri
 		}
 	}
 
-	checks = append(checks,
-		InPathCheck{executable: "mount", mandatory: true, exec: execer},
-		InPathCheck{executable: "nsenter", mandatory: true, exec: execer})
+	checks = append(checks, InPathCheck{executable: "mount", mandatory: true, exec: execer})
 	return checks
 }
