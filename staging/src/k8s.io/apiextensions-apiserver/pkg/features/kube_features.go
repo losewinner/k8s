@@ -29,6 +29,10 @@ const (
 	// // owner: @username
 	// MyFeature() bool
 
+	// owner: @antomy-gc
+	// Enables support for elements duplicated by MergeKey value during strategicpatch.
+	AllowStrategicPatchDuplicatedMergeKeyValues featuregate.Feature = "AllowStrategicPatchDuplicatedMergeKeyValues"
+
 	// owner: @alexzielenski
 	//
 	// Ignores errors raised on unchanged fields of Custom Resources
@@ -53,6 +57,9 @@ func init() {
 //
 // Entries are alphabetized.
 var defaultVersionedKubernetesFeatureGates = map[featuregate.Feature]featuregate.VersionedSpecs{
+	AllowStrategicPatchDuplicatedMergeKeyValues: {
+		{Version: version.MustParse("1.32"), Default: false, PreRelease: featuregate.Alpha},
+	},
 	CRDValidationRatcheting: {
 		{Version: version.MustParse("1.28"), Default: false, PreRelease: featuregate.Alpha},
 		{Version: version.MustParse("1.30"), Default: true, PreRelease: featuregate.Beta},

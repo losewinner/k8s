@@ -23,10 +23,10 @@ import (
 	"strings"
 	"testing"
 
+	apiextensionsfeatures "k8s.io/apiextensions-apiserver/pkg/features"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/component-base/featuregate"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
-	"k8s.io/kubernetes/pkg/features"
 	"sigs.k8s.io/yaml"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -841,7 +841,7 @@ func TestCustomStrategicMergePatch(t *testing.T) {
 var featureGateTestCases = []StrategicMergePatchFeatureGateTestCase{
 	{
 		Description: "removing element from a merging list with duplicate",
-		FeatureGate: features.AllowStrategicPatchDuplicatedMergeKeyValues,
+		FeatureGate: apiextensionsfeatures.AllowStrategicPatchDuplicatedMergeKeyValues,
 		Original: []byte(`
 mergingList:
 - name: 1
@@ -1066,7 +1066,7 @@ mergingList:
 	},
 	{
 		Description: "removing one duplicate element and updating another in merging list",
-		FeatureGate: features.AllowStrategicPatchDuplicatedMergeKeyValues,
+		FeatureGate: apiextensionsfeatures.AllowStrategicPatchDuplicatedMergeKeyValues,
 		Original: []byte(`
 mergingList:
 - name: 1
@@ -6806,7 +6806,6 @@ func TestStrategicMergePatch(t *testing.T) {
 		// run multiple times to exercise different map traversal orders
 		for i := 0; i < 10; i++ {
 			for _, c := range strategicMergePatchRawTestCases {
-				utilfeature.DefaultFeatureGate.Enabled(features.AllowStrategicPatchDuplicatedMergeKeyValues)
 				t.Run(c.Description+"/TwoWay", func(t *testing.T) {
 					testTwoWayPatchForRawTestCase(t, c, schema)
 				})
