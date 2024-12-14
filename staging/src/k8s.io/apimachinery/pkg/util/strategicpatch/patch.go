@@ -23,10 +23,8 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	apimachineryfeatures "k8s.io/apimachinery/pkg/features"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/mergepatch"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 )
 
 // An alternate implementation of JSON Merge Patch
@@ -51,6 +49,8 @@ const (
 	retainKeysDirective                    = "$" + retainKeysStrategy
 	setElementOrderDirectivePrefix         = "$setElementOrder"
 )
+
+var supportDuplicateMergeKeyValues = true
 
 // JSONMap is a representations of JSON object encoded as map[string]interface{}
 // where the children can be either map[string]interface{}, []interface{} or
@@ -782,8 +782,7 @@ func diffListsOfMaps(original, modified []interface{}, schema LookupPatchMeta, m
 			}
 			modifiedIndex++
 		// modified missing one of duplicated by MergeKey value elements
-		case utilfeature.DefaultFeatureGate.Enabled(apimachineryfeatures.AllowStrategicPatchDuplicatedMergeKeyValues) &&
-			bothPreviousInBounds &&
+		case supportDuplicateMergeKeyValues && bothPreviousInBounds &&
 			originalElementMergeKeyValueString == previousOriginalElementMergeKeyValueString &&
 			previousOriginalElementMergeKeyValueString == previousModifiedElementMergeKeyValueString:
 			// if deleted one of duplicates by mergeKey, will send "delete" and "insert" commands

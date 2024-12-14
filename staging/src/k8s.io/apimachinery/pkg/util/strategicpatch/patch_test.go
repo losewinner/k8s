@@ -23,10 +23,6 @@ import (
 	"strings"
 	"testing"
 
-	apimachineryfeatures "k8s.io/apimachinery/pkg/features"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	"k8s.io/component-base/featuregate"
-	featuregatetesting "k8s.io/component-base/featuregate/testing"
 	"sigs.k8s.io/yaml"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -69,9 +65,8 @@ type StrategicMergePatchRawTestCase struct {
 	StrategicMergePatchRawTestCaseData
 }
 
-type StrategicMergePatchFeatureGateTestCase struct {
+type StrategicMergePatchBackwardCompatibilityTestCase struct {
 	Description string
-	FeatureGate featuregate.Feature
 	Original    []byte
 	Modified    []byte
 	Current     []byte
@@ -111,19 +106,19 @@ type StrategicMergePatchRawTestCaseData struct {
 }
 
 type StrategicMergePatchGenerationRawTestCaseData struct {
-	Description        string
-	FeatureGateEnabled bool
-	TwoWay             []byte
-	ThreeWay           []byte
+	Description                    string
+	DuplicateMergeKeyValuesEnabled bool
+	TwoWay                         []byte
+	ThreeWay                       []byte
 }
 
 type StrategicMergePatchApplicationRawTestCaseData struct {
-	Description        string
-	FeatureGateEnabled bool
-	TwoWay             []byte
-	TwoWayResult       []byte
-	ThreeWay           []byte
-	ThreeWayResult     []byte
+	Description                    string
+	DuplicateMergeKeyValuesEnabled bool
+	TwoWay                         []byte
+	TwoWayResult                   []byte
+	ThreeWay                       []byte
+	ThreeWayResult                 []byte
 }
 
 type MergeItem struct {
@@ -838,10 +833,9 @@ func TestCustomStrategicMergePatch(t *testing.T) {
 	}
 }
 
-var featureGateTestCases = []StrategicMergePatchFeatureGateTestCase{
+var featureGateTestCases = []StrategicMergePatchBackwardCompatibilityTestCase{
 	{
 		Description: "removing element from a merging list with duplicate",
-		FeatureGate: apimachineryfeatures.AllowStrategicPatchDuplicatedMergeKeyValues,
 		Original: []byte(`
 mergingList:
 - name: 1
@@ -869,8 +863,8 @@ mergingList:
 `),
 		Generation: []StrategicMergePatchGenerationRawTestCaseData{
 			{
-				Description:        "new client",
-				FeatureGateEnabled: true,
+				Description:                    "new client",
+				DuplicateMergeKeyValuesEnabled: true,
 				TwoWay: []byte(`
 $setElementOrder/mergingList:
 - name: 1
@@ -895,8 +889,8 @@ mergingList:
 `),
 			},
 			{
-				Description:        "old client",
-				FeatureGateEnabled: false,
+				Description:                    "old client",
+				DuplicateMergeKeyValuesEnabled: false,
 				TwoWay: []byte(`
 $setElementOrder/mergingList:
 - name: 1
@@ -919,8 +913,8 @@ mergingList:
 		},
 		Application: []StrategicMergePatchApplicationRawTestCaseData{
 			{
-				Description:        "new client new server",
-				FeatureGateEnabled: true,
+				Description:                    "new client new server",
+				DuplicateMergeKeyValuesEnabled: true,
 				TwoWay: []byte(`
 $setElementOrder/mergingList:
 - name: 1
@@ -959,8 +953,8 @@ mergingList:
 `),
 			},
 			{
-				Description:        "old client new server",
-				FeatureGateEnabled: true,
+				Description:                    "old client new server",
+				DuplicateMergeKeyValuesEnabled: true,
 				TwoWay: []byte(`
 $setElementOrder/mergingList:
 - name: 1
@@ -991,8 +985,8 @@ mergingList:
 `),
 			},
 			{
-				Description:        "new client old server",
-				FeatureGateEnabled: false,
+				Description:                    "new client old server",
+				DuplicateMergeKeyValuesEnabled: false,
 				TwoWay: []byte(`
 $setElementOrder/mergingList:
 - name: 1
@@ -1031,8 +1025,8 @@ mergingList:
 `),
 			},
 			{
-				Description:        "old client old server",
-				FeatureGateEnabled: false,
+				Description:                    "old client old server",
+				DuplicateMergeKeyValuesEnabled: false,
 				TwoWay: []byte(`
 $setElementOrder/mergingList:
 - name: 1
@@ -1066,7 +1060,6 @@ mergingList:
 	},
 	{
 		Description: "removing one duplicate element and updating another in merging list",
-		FeatureGate: apimachineryfeatures.AllowStrategicPatchDuplicatedMergeKeyValues,
 		Original: []byte(`
 mergingList:
 - name: 1
@@ -1095,8 +1088,8 @@ mergingList:
 `),
 		Generation: []StrategicMergePatchGenerationRawTestCaseData{
 			{
-				Description:        "new client",
-				FeatureGateEnabled: true,
+				Description:                    "new client",
+				DuplicateMergeKeyValuesEnabled: true,
 				TwoWay: []byte(`
 $setElementOrder/mergingList:
 - name: 1
@@ -1121,8 +1114,8 @@ mergingList:
 `),
 			},
 			{
-				Description:        "old client",
-				FeatureGateEnabled: false,
+				Description:                    "old client",
+				DuplicateMergeKeyValuesEnabled: false,
 				TwoWay: []byte(`
 $setElementOrder/mergingList:
 - name: 1
@@ -1150,8 +1143,8 @@ mergingList:
 			{
 				// This test case has wrong ordering in ThreeWayMerge result because of side effect in mergeSliceWithSpecialElements
 				// function, same as in case 'behavior of set element order for a merging int list with duplicate'
-				Description:        "new client new server",
-				FeatureGateEnabled: true,
+				Description:                    "new client new server",
+				DuplicateMergeKeyValuesEnabled: true,
 				TwoWay: []byte(`
 $setElementOrder/mergingList:
 - name: 1
@@ -1191,8 +1184,8 @@ mergingList:
 `),
 			},
 			{
-				Description:        "old client new server",
-				FeatureGateEnabled: true,
+				Description:                    "old client new server",
+				DuplicateMergeKeyValuesEnabled: true,
 				TwoWay: []byte(`
 $setElementOrder/mergingList:
 - name: 1
@@ -1231,8 +1224,8 @@ mergingList:
 			{
 				// This test case has wrong ordering in ThreeWayMerge result because of side effect in mergeSliceWithSpecialElements
 				// function, same as in case 'behavior of set element order for a merging int list with duplicate'
-				Description:        "new client old server",
-				FeatureGateEnabled: false,
+				Description:                    "new client old server",
+				DuplicateMergeKeyValuesEnabled: false,
 				TwoWay: []byte(`
 $setElementOrder/mergingList:
 - name: 1
@@ -1272,8 +1265,8 @@ mergingList:
 `),
 			},
 			{
-				Description:        "old client old server",
-				FeatureGateEnabled: false,
+				Description:                    "old client old server",
+				DuplicateMergeKeyValuesEnabled: false,
 				TwoWay: []byte(`
 $setElementOrder/mergingList:
 - name: 1
@@ -1338,18 +1331,21 @@ func TestFeatureGates(t *testing.T) {
 	}
 }
 
-func testFeatureGatePatchCreation(t *testing.T, schema LookupPatchMeta, c StrategicMergePatchFeatureGateTestCase) {
+func testFeatureGatePatchCreation(t *testing.T, schema LookupPatchMeta, c StrategicMergePatchBackwardCompatibilityTestCase) {
 	original, modified := yamlToJSONOrError(t, c.Original), yamlToJSONOrError(t, c.Modified)
 
 	for _, current := range c.Generation {
 		expectedTwoWay := yamlToJSONOrError(t, current.TwoWay)
 		desc := fmt.Sprintf("%s/PatchCreation/TwoWay/%s", c.Description, current.Description)
 		t.Run(desc, func(t *testing.T) {
-			featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, c.FeatureGate, current.FeatureGateEnabled)
+			previousSupportDuplicateMergeKeyValues := supportDuplicateMergeKeyValues
+			supportDuplicateMergeKeyValues = current.DuplicateMergeKeyValuesEnabled
+			defer func() { supportDuplicateMergeKeyValues = previousSupportDuplicateMergeKeyValues }()
+
 			actualPatch, err := CreateTwoWayMergePatchUsingLookupPatchMeta(original, modified, schema)
 			if err != nil {
-				t.Errorf("error: %s\nin test case: %s\ncannot create two way patch:\noriginal:%s\nmodified:%s\ngate enabled:%t\n",
-					err, c.Description, c.Original, c.Modified, current.FeatureGateEnabled)
+				t.Errorf("error: %s\nin test case: %s\ncannot create two way patch:\noriginal:%s\nmodified:%s\nduplicate MergeKey values enabled:%t\n",
+					err, c.Description, c.Original, c.Modified, current.DuplicateMergeKeyValuesEnabled)
 				return
 			}
 			testPatchCreation(t, expectedTwoWay, actualPatch, c.Description)
@@ -1359,11 +1355,14 @@ func testFeatureGatePatchCreation(t *testing.T, schema LookupPatchMeta, c Strate
 		expectedThreeWay := yamlToJSONOrError(t, current.ThreeWay)
 		desc = fmt.Sprintf("%s/PatchCreation/ThreeWay/%s", c.Description, current.Description)
 		t.Run(desc, func(t *testing.T) {
-			featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, c.FeatureGate, current.FeatureGateEnabled)
+			previousSupportDuplicateMergeKeyValues := supportDuplicateMergeKeyValues
+			supportDuplicateMergeKeyValues = current.DuplicateMergeKeyValuesEnabled
+			defer func() { supportDuplicateMergeKeyValues = previousSupportDuplicateMergeKeyValues }()
+
 			actual, err := CreateThreeWayMergePatch(original, modified, currentManifest, schema, false)
 			if err != nil {
-				t.Errorf("error: %s\nin test case: %s\ncannot create three way patch:\noriginal:%s\nmodified:%s\ncurrent:%s\ngate enabled:%t\n",
-					err, c.Description, c.Original, c.Modified, c.Current, current.FeatureGateEnabled)
+				t.Errorf("error: %s\nin test case: %s\ncannot create three way patch:\noriginal:%s\nmodified:%s\ncurrent:%s\nduplicate MergeKey values enabled:%t\n",
+					err, c.Description, c.Original, c.Modified, c.Current, current.DuplicateMergeKeyValuesEnabled)
 				return
 			}
 			testPatchCreation(t, expectedThreeWay, actual, c.Description)
@@ -1371,14 +1370,17 @@ func testFeatureGatePatchCreation(t *testing.T, schema LookupPatchMeta, c Strate
 	}
 }
 
-func testFeatureGatePatchApplication(t *testing.T, schema LookupPatchMeta, c StrategicMergePatchFeatureGateTestCase) {
+func testFeatureGatePatchApplication(t *testing.T, schema LookupPatchMeta, c StrategicMergePatchBackwardCompatibilityTestCase) {
 	original := yamlToJSONOrError(t, c.Original)
 
 	for _, current := range c.Application {
 		patch, expectedResult := yamlToJSONOrError(t, current.TwoWay), yamlToJSONOrError(t, current.TwoWayResult)
 		desc := fmt.Sprintf("%s/PatchApplication/TwoWay/%s", c.Description, current.Description)
 		t.Run(desc, func(t *testing.T) {
-			featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, c.FeatureGate, current.FeatureGateEnabled)
+			previousSupportDuplicateMergeKeyValues := supportDuplicateMergeKeyValues
+			supportDuplicateMergeKeyValues = current.DuplicateMergeKeyValuesEnabled
+			defer func() { supportDuplicateMergeKeyValues = previousSupportDuplicateMergeKeyValues }()
+
 			testPatchApplication(t, original, patch, expectedResult, c.Description, "", schema)
 		})
 
@@ -1386,7 +1388,10 @@ func testFeatureGatePatchApplication(t *testing.T, schema LookupPatchMeta, c Str
 		currentManifest := yamlToJSONOrError(t, c.Current)
 		desc = fmt.Sprintf("%s/PatchApplication/ThreeWay/%s", c.Description, current.Description)
 		t.Run(desc, func(t *testing.T) {
-			featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, c.FeatureGate, current.FeatureGateEnabled)
+			previousSupportDuplicateMergeKeyValues := supportDuplicateMergeKeyValues
+			supportDuplicateMergeKeyValues = current.DuplicateMergeKeyValuesEnabled
+			defer func() { supportDuplicateMergeKeyValues = previousSupportDuplicateMergeKeyValues }()
+
 			testPatchApplication(t, currentManifest, threeWayPatch, expectedThreeWayResult, c.Description, "", schema)
 		})
 	}
