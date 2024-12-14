@@ -22,8 +22,8 @@ import (
 	"sort"
 	"strings"
 
-	apiextensionsfeatures "k8s.io/apiextensions-apiserver/pkg/features"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	apimachineryfeatures "k8s.io/apimachinery/pkg/features"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/mergepatch"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
@@ -782,7 +782,7 @@ func diffListsOfMaps(original, modified []interface{}, schema LookupPatchMeta, m
 			}
 			modifiedIndex++
 		// modified missing one of duplicated by MergeKey value elements
-		case utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.AllowStrategicPatchDuplicatedMergeKeyValues) &&
+		case utilfeature.DefaultFeatureGate.Enabled(apimachineryfeatures.AllowStrategicPatchDuplicatedMergeKeyValues) &&
 			bothPreviousInBounds &&
 			originalElementMergeKeyValueString == previousOriginalElementMergeKeyValueString &&
 			previousOriginalElementMergeKeyValueString == previousModifiedElementMergeKeyValueString:

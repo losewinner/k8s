@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	apiextensionsfeatures "k8s.io/apiextensions-apiserver/pkg/features"
+	apimachineryfeatures "k8s.io/apimachinery/pkg/features"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/component-base/featuregate"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
@@ -841,7 +841,7 @@ func TestCustomStrategicMergePatch(t *testing.T) {
 var featureGateTestCases = []StrategicMergePatchFeatureGateTestCase{
 	{
 		Description: "removing element from a merging list with duplicate",
-		FeatureGate: apiextensionsfeatures.AllowStrategicPatchDuplicatedMergeKeyValues,
+		FeatureGate: apimachineryfeatures.AllowStrategicPatchDuplicatedMergeKeyValues,
 		Original: []byte(`
 mergingList:
 - name: 1
@@ -1066,7 +1066,7 @@ mergingList:
 	},
 	{
 		Description: "removing one duplicate element and updating another in merging list",
-		FeatureGate: apiextensionsfeatures.AllowStrategicPatchDuplicatedMergeKeyValues,
+		FeatureGate: apimachineryfeatures.AllowStrategicPatchDuplicatedMergeKeyValues,
 		Original: []byte(`
 mergingList:
 - name: 1
