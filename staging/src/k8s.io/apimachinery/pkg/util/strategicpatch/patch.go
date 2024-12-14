@@ -25,6 +25,8 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/mergepatch"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	"k8s.io/kubernetes/pkg/features"
 )
 
 // An alternate implementation of JSON Merge Patch
@@ -780,7 +782,8 @@ func diffListsOfMaps(original, modified []interface{}, schema LookupPatchMeta, m
 			}
 			modifiedIndex++
 		// modified missing one of duplicated by MergeKey value elements
-		case bothPreviousInBounds &&
+		case utilfeature.DefaultFeatureGate.Enabled(features.AllowStrategicPatchDuplicatedMergeKeyValues) &&
+			bothPreviousInBounds &&
 			originalElementMergeKeyValueString == previousOriginalElementMergeKeyValueString &&
 			previousOriginalElementMergeKeyValueString == previousModifiedElementMergeKeyValueString:
 			// if deleted one of duplicates by mergeKey, will send "delete" and "insert" commands

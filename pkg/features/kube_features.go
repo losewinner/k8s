@@ -56,6 +56,10 @@ const (
 	// services of types other than LoadBalancer.
 	AllowServiceLBStatusOnNonLB featuregate.Feature = "AllowServiceLBStatusOnNonLB"
 
+	// owner: @antomy-gc
+	// Enables support for elements duplicated by MergeKey value during strategicpatch.
+	AllowStrategicPatchDuplicatedMergeKeyValues featuregate.Feature = "AllowStrategicPatchDuplicatedMergeKeyValues"
+
 	// owner: @bswartz
 	//
 	// Enables usage of any object for volume data source in PVCs
